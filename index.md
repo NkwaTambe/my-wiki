@@ -9,6 +9,8 @@ This is a personal knowledge base for technical notes, cheat sheets, and documen
 
 ### Systems Engineering
 - [**Linux Cheat Sheet**](./docs/systems/linux.md) - Essential commands, file permissions, and process management.
+- [**The Boot Process**](./docs/systems/boot-process.md) - From power button to login screen (BIOS to Systemd).
+- [**Storage & Disk Design**](./docs/systems/storage.md) - Physical vs. Logical volumes (LVM) explained.
 - [**Networking**](./docs/systems/networking.md) - TCP/IP, subnetting, and DNS basics.
 
 ### General
