@@ -1,0 +1,5 @@
+title: My Tech Wiki
+description: A lightweight collection of technical notes and documentation.
+theme: jekyll-theme-minimal
+plugins:
+  - jekyll-seo-tag
