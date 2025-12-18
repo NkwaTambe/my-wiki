@@ -50,7 +50,6 @@ ${PR_CYAN}%(!.%SROOT%s.%n)${PR_GREY}@${PR_GREEN}%m:%l\
 ${PR_GREY})${PR_CYAN}${PR_HBAR}${PR_URCORNER}\
 
 ${PR_CYAN}${PR_LLCORNER}${PR_BLUE}${PR_HBAR}(\
-${PR_YELLOW}%D{%H:%M:%S}\
 ${PR_LIGHT_BLUE}%{$reset_color%}$(git_prompt_info)$(git_prompt_status)${PR_BLUE})${PR_CYAN}${PR_HBAR}\
 ${PR_HBAR}\
 >${PR_NO_COLOUR}
@@ -62,7 +61,6 @@ ${PR_HBAR}\
 -   **Line 4**: `$(virtualenv_prompt_info)` and `$(ruby_prompt_info)` are functions that display information about the current Python and Ruby environments, respectively.
 -   **Line 5**: `%n` (username), `%m` (hostname), and `%l` (terminal line). The `%(!.%SROOT%s.%n)` part is a conditional that changes the prompt if you are root.
 -   **Line 7**: Draws the bottom-left corner.
--   **Line 8**: `%D{%H:%M:%S}` displays the time.
 -   **Line 9**: `$(git_prompt_info)` and `$(git_prompt_status)` are functions that display Git information.
 -   **Line 11**: `>` is the final character of the prompt before your cursor.
 
@@ -97,7 +95,7 @@ PS1="%n@%m %~ > "
 This isolates the bottom line of your prompt. **Note**: This command will only work in your fully configured Zsh shell, as it relies on functions and variables set by your Oh My Zsh theme.
 
 ```zsh
-PS1='${PR_CYAN}${PR_LLCORNER}${PR_BLUE}${PR_HBAR}(${PR_YELLOW}%D{%H:%M:%S}${PR_LIGHT_BLUE}%{$reset_color%}$(git_prompt_info)$(git_prompt_status)${PR_BLUE})${PR_CYAN}${PR_HBAR}${PR_HBAR}>${PR_NO_COLOUR} '
+PS1='${PR_CYAN}${PR_LLCORNER}${PR_BLUE}${PR_HBAR}(${PR_LIGHT_BLUE}%{$reset_color%}$(git_prompt_info)$(git_prompt_status)${PR_BLUE})${PR_CYAN}${PR_HBAR}${PR_HBAR}>${PR_NO_COLOUR} '
 ```
 
 ### For Bash Users
