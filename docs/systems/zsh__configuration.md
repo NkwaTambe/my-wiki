@@ -25,7 +25,7 @@ Here are some common prompt escapes and what they represent:
 -   `%n`: The username.
 -   `%m`: The hostname.
 -   `%l`: The current terminal line.
--   `%D{string}`: The current date, formatted according to `string`. For example, `%D{%H:%M:%S}` shows the time as hours:minutes:seconds.
+-   `%D{string}`: The current date, formatted according to `string`. For example, `%D{% raw %}{%H:%M:%S}{% endraw %}` shows the time as hours:minutes:seconds.
 -   `%F{color}` and `%f`: Change the text color. `%F{red}` starts red text, and `%f` resets it.
 -   `%K{color}` and `%k`: Change the background color.
 -   `%B` and `%b`: Start and end bold text.
@@ -68,6 +68,56 @@ ${PR_HBAR}\
 
 This detailed structure is what creates the two-line, feature-rich prompt you see in your terminal.
 
+#### Experimenting with Your Prompt
+
+To understand what each part of the prompt does, you can experiment by setting the `PS1` variable directly in your terminal. These changes are temporary and will only last for the current session. To revert to your normal prompt, simply open a new terminal window.
+
+**Important Note**: The examples below are for **Zsh**. If you are in a **Bash** shell (which uses `$` as a default prompt and shows `-bash` in errors), these commands will not work as expected.
+
+### For Zsh Users
+
+**1. A Minimal Prompt**
+
+This will give you a very basic prompt with just the current directory and a `>` symbol.
+
+```zsh
+PS1="%~ > "
+```
+
+**2. Adding User and Host**
+
+This adds the `user@host` information to your prompt.
+
+```zsh
+PS1="%n@%m %~ > "
+```
+
+**3. The Time and Git Info (Bottom Line)**
+
+This isolates the bottom line of your prompt. **Note**: This command will only work in your fully configured Zsh shell, as it relies on functions and variables set by your Oh My Zsh theme.
+
+```zsh
+PS1='${PR_CYAN}${PR_LLCORNER}${PR_BLUE}${PR_HBAR}(${PR_YELLOW}%D{%H:%M:%S}${PR_LIGHT_BLUE}%{$reset_color%}$(git_prompt_info)$(git_prompt_status)${PR_BLUE})${PR_CYAN}${PR_HBAR}${PR_HBAR}>${PR_NO_COLOUR} '
+```
+
+### For Bash Users
+
+If you are in a Bash shell, you need to use a different syntax. Here are the Bash equivalents for the simple examples:
+
+**1. A Minimal Prompt**
+
+```bash
+PS1="\w > "
+```
+
+**2. Adding User and Host**
+
+```bash
+PS1="\u@\h \w > "
+```
+
+The more complex examples involving colors and Git functions are not easily replicated in Bash without significant configuration, as they rely on the Oh My Zsh framework.
+
 ### Plugins
 
 Plugins add new features and commands to the shell.
@@ -100,3 +150,10 @@ This section covers scripts that are sourced when the shell starts.
 - **`[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"`**: This loads the envman configuration.
 
 - **`[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"`**: This loads SDKMAN!.
+
+## References
+
+For more in-depth information, you can refer to the official documentation for each shell:
+
+-   **Zsh**: [Zsh Manual - Prompt Expansion](http://zsh.sourceforge.net/Doc/Release/Prompt-Expansion.html)
+-   **Bash**: [Bash Manual - Controlling the Prompt](https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html)
