@@ -12,7 +12,7 @@ This is a personal knowledge base for technical notes, cheat sheets, and documen
 - [**The Boot Process**](./docs/systems/boot-process.md) - From power button to login screen (BIOS to Systemd).
 - [**Storage & Disk Design**](./docs/systems/storage.md) - Physical vs. Logical volumes (LVM) explained.
 - [**Networking**](./docs/systems/networking.md) - TCP/IP, subnetting, and DNS basics.
-- [**Zsh Configuration**](./docs/systems/zsh__configuration.md) - Zsh setup analysis.
+- [**Shell Prompt Customization**](./docs/systems/shell-prompt-customization.md) - A guide to customizing your shell prompt.
 
 ### General
 - [**About This Wiki**](./docs/general/about.md) - Information about this project and author.
