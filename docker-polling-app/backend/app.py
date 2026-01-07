@@ -1,10 +1,15 @@
 import os
+import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import psycopg2
+import redis
 
 app = Flask(__name__)
 CORS(app)
+
+# Establish a connection to Redis
+r = redis.Redis(host=os.environ.get("REDIS_HOST"), port=6379, db=0, decode_responses=True)
 
 def get_db_connection():
     conn = psycopg2.connect(
@@ -30,18 +35,34 @@ def vote():
     cur.close()
     conn.close()
 
+    # After a successful vote, the cache is outdated. Delete it.
+    r.delete("poll_results")
+
     return jsonify({"status": "success"})
 
 @app.route("/results", methods=["GET"])
 def results():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT option, vote_count FROM votes")
-    votes = cur.fetchall()
-    cur.close()
-    conn.close()
+    # First, try to get the results from the Redis cache
+    cached_results = r.get("poll_results")
 
-    return jsonify(dict(votes))
+    if cached_results:
+        # If found (cache hit), return the cached data
+        return jsonify(json.loads(cached_results))
+    else:
+        # If not in cache (cache miss), query the database
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT option, vote_count FROM votes")
+        votes = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        results_dict = dict(votes)
+        
+        # Store the new results in Redis with a 10-second expiration
+        r.set("poll_results", json.dumps(results_dict), ex=10)
+
+        return jsonify(results_dict)
 
 if __name__ == "__main__":
     # Create table on startup if it doesn't exist
