@@ -63,24 +63,160 @@ If you make changes to your application code (for example, updating the Python d
     ```
 This will replace the `latest` tag on your Docker Hub repository with the new image you just built.
 
-## Optimizing Image Size
+### 3. Image Optimization with Multi-Stage Builds
 
-Docker image size is a critical factor in development and deployment. Smaller images are faster to build, push, and pull, and they reduce storage costs. Here are two key strategies we've used to keep our images small.
+Docker image size is a critical factor in development and deployment. Smaller images are faster to build, push, and pull, and they reduce storage costs and improve security by minimizing the attack surface. This project uses **multi-stage builds** in both the frontend and backend `Dockerfile`s to create lean, optimized final images.
 
-### 1. Using Alpine Base Images
+A multi-stage build uses multiple `FROM` instructions in a `Dockerfile`. Each `FROM` starts a new build stage. You can selectively copy artifacts—like compiled code or installed packages—from one stage to another, leaving behind build tools and other unnecessary files.
 
-The easiest and most effective way to reduce image size is to start with a smaller base image.
+---
 
-*   **Backend:** We switched the base image in `backend/Dockerfile` from `python:3.9-slim` to `python:3.9-alpine`. Alpine Linux is a minimal Linux distribution that is significantly smaller than the default Debian-based images, drastically reducing the final image size.
-*   **Frontend:** The `frontend` service was already using `nginx:stable-alpine`, which is an excellent choice for a lightweight web server.
+### `backend/Dockerfile` Explained
 
-### 2. Using `.dockerignore`
+The backend `Dockerfile` is structured in two stages to separate the build environment from the final runtime environment.
 
-When you run a `docker build` command, Docker's build context (all the files in the specified directory) is sent to the Docker daemon. By default, this includes every file, including `git` history, virtual environments, and editor configurations, which can add unnecessary weight to your image.
+```dockerfile
+# Stage 1: The "builder" stage
+# This stage installs all dependencies, including build-time requirements.
+FROM python:3.9-alpine AS builder
 
-To prevent this, we've added a `.dockerignore` file to both the `backend` and `frontend` directories. This file works just like a `.gitignore` file, allowing you to list files and directories to exclude from the build context. This ensures that only the necessary application code is copied into the image, keeping it clean and lean.
+# Install OS-level dependencies needed for building Python packages
+RUN apk add --no-cache gcc python3-dev musl-dev postgresql-dev
 
-By implementing these changes, the `backend` image size was reduced from over 50 MB to approximately 24 MB—a reduction of more than 50%. The `frontend` image size did not change as it was already highly optimized using `nginx:stable-alpine`, but the addition of a `.dockerignore` file is a best practice that prevents accidental size increases in the future.
+# Set the working directory
+WORKDIR /app
+
+# Copy the requirements file and install Python packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: The "final" stage
+# This stage creates the lean, final runtime image.
+FROM python:3.9-alpine
+
+# Install only the required runtime OS-level libraries
+RUN apk add --no-cache postgresql-libs
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the installed Python packages from the "builder" stage
+COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=builder /app /app
+
+# Copy the application code
+COPY . .
+
+# Expose the port the app runs on
+EXPOSE 5000
+
+# Define the command to run the application
+CMD ["python", "app.py"]
+```
+
+*   **Stage 1 (`builder`):**
+    *   Starts from `python:3.9-alpine`.
+    *   Installs build-time dependencies like `gcc` and `python3-dev`, which are required to compile some Python packages (e.g., `psycopg2-binary`).
+    *   Installs the Python packages from `requirements.txt`. At the end of this stage, all the necessary packages are installed, but the image also contains the large build tools we don't need at runtime.
+
+*   **Stage 2 (Final Image):**
+    *   Starts fresh from the same lightweight `python:3.9-alpine` base image.
+    *   Installs *only* the runtime OS dependencies, like `postgresql-libs`, which are the shared libraries needed to connect to PostgreSQL.
+    *   The `COPY --from=builder ...` commands are the key to this pattern. They copy the installed Python packages from the `builder` stage into the final image, leaving the build tools behind.
+    *   Finally, it copies the application code and sets the `CMD`.
+
+This process results in a final image that is significantly smaller and more secure than a traditional single-stage build.
+
+---
+
+### `frontend/Dockerfile` Explained
+
+While the frontend is just serving static files and is already very small, using a multi-stage build is a best practice that makes the `Dockerfile`'s intent clearer and provides a scalable pattern for when the frontend becomes more complex (e.g., requiring a JavaScript build step).
+
+```dockerfile
+# Stage 1: The "assets" stage
+# For a simple static site, this stage just holds the source files.
+# In a more complex project, this stage would build the assets (e.g., using Node.js).
+FROM alpine:latest AS assets
+
+# Copy the static files into a temporary location in this stage.
+COPY . /assets
+
+# Stage 2: The "final" stage
+# This is the lean runtime image that will serve the files.
+FROM nginx:stable-alpine
+
+# Copy the static files from the "assets" stage into the Nginx public directory.
+COPY --from=assets /assets /usr/share/nginx/html
+
+# Expose port 80 for the Nginx server.
+EXPOSE 80
+```
+
+*   **Stage 1 (`assets`):**
+    *   This stage is extremely simple: it starts from a minimal `alpine` image and copies the frontend's static files (`index.html`, `style.css`, etc.) into an `/assets` directory. It acts as a temporary holding area for our content.
+
+*   **Stage 2 (Final Image):**
+    *   This stage starts from the official `nginx:stable-alpine` image, which is a fully configured, lightweight web server.
+    *   The `COPY --from=assets ...` command copies the static files from the `assets` stage into the Nginx public directory (`/usr/share/nginx/html`), which is where Nginx serves files from by default.
+
+This cleanly separates the content (the "what") from the server (the "how"). If we later needed to add a build step with Node.js, we would simply perform that build in the `assets` stage, and the final Nginx stage would remain unchanged.
+
+### Visualizing the Multi-Stage Build Process
+
+The following diagrams illustrate the flow of the multi-stage builds for both the backend and frontend services.
+
+#### Backend Multi-Stage Build Flow
+
+This diagram shows how the backend image is built. The `builder` stage creates the necessary Python environment with all dependencies, and the `final` stage copies only the essential components, resulting in a lean image.
+
+```mermaid
+sequenceDiagram
+    participant DockerHost as Docker Host
+    participant BuilderStage as Builder Stage (python:3.9-alpine)
+    participant FinalStage as Final Stage (python:3.9-alpine)
+
+    DockerHost->>BuilderStage: Start build from `python:3.9-alpine`
+    Note over BuilderStage: Install build tools (gcc, etc.)
+    DockerHost->>BuilderStage: `RUN apk add ...`
+    Note over BuilderStage: Install Python packages
+    DockerHost->>BuilderStage: `COPY requirements.txt .`
+    DockerHost->>BuilderStage: `RUN pip install ...`
+    
+    DockerHost->>FinalStage: Start build from `python:3.9-alpine`
+    Note over FinalStage: Install runtime libraries (postgresql-libs)
+    DockerHost->>FinalStage: `RUN apk add ...`
+    
+    Note over BuilderStage, FinalStage: Copy installed packages
+    BuilderStage-->>FinalStage: `COPY --from=builder ...`
+    
+    Note over DockerHost, FinalStage: Copy application code
+    DockerHost->>FinalStage: `COPY . .`
+    
+    Note right of FinalStage: Final image is lean
+```
+
+#### Frontend Multi-Stage Build Flow
+
+This diagram illustrates the simpler frontend build process. The `assets` stage acts as a container for the static files, which are then served by a clean Nginx instance in the `final` stage.
+
+```mermaid
+sequenceDiagram
+    participant DockerHost as Docker Host
+    participant AssetsStage as Assets Stage (alpine:latest)
+    participant FinalStage as Final Stage (nginx:stable-alpine)
+
+    DockerHost->>AssetsStage: Start build from `alpine:latest`
+    Note over AssetsStage: Collect static files
+    DockerHost->>AssetsStage: `COPY . /assets`
+
+    DockerHost->>FinalStage: Start build from `nginx:stable-alpine`
+    
+    Note over AssetsStage, FinalStage: Copy static files to Nginx
+    AssetsStage-->>FinalStage: `COPY --from=assets /assets /usr/share/nginx/html`
+
+    Note right of FinalStage: Final image is a configured Nginx server
+```
 
 ## Application Architecture and Sequence Diagram
 
