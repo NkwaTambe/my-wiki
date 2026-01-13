@@ -5,8 +5,6 @@ services:
       - "8080:80"
     depends_on:
       - backend
-    networks:
-      - frontend-network
 
   backend:
     build: ./backend
@@ -21,9 +19,6 @@ services:
     depends_on:
       - db
       - redis
-    networks:
-      - frontend-network
-      - backend-network
 
   db:
     image: postgres:13
@@ -33,17 +28,9 @@ services:
       - POSTGRES_PASSWORD=postgres
     volumes:
       - db-data:/var/lib/postgresql/data
-    networks:
-      - backend-network
 
   redis:
     image: redis:alpine
-    networks:
-      - backend-network
 
 volumes:
   db-data:
-
-networks:
-  frontend-network:
-  backend-network:
