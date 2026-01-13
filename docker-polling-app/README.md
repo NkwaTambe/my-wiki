@@ -282,11 +282,95 @@ A common question is about the `environment` variables in `docker-compose.yml` a
 
 ### Docker Networking Explained
 
-When you run `docker-compose up`, Docker Compose automatically creates a **default bridge network** for the entire project. Every service defined in the `docker-compose.yml` file is attached to this network.
+This project demonstrates two approaches to networking. You can compare the current `docker-compose.yml` with the backup file `docker-compose.yml.bak` to see the code differences.
 
-This has two major benefits:
-1.  **Service Discovery:** Containers on the same network can find and communicate with each other using their service names as hostnames. For example, the `backend` container can connect to the database at `db:5432` and the cache at `redis:6379`. Docker's internal DNS server resolves these service names to the correct container's IP address.
-2.  **Isolation:** The application stack is isolated from the host machine and from other Docker containers running on different networks. Only the ports we explicitly publish (like `8080:80` for the frontend) are accessible from the outside.
+#### 1. Original Architecture (Before)
+*Refer to `docker-compose.yml.bak`*
+
+In the original configuration, we relied on Docker Compose's **default bridge network**. When you run `docker-compose up`, a single network is created, and every service (`frontend`, `backend`, `db`, `redis`) is attached to it.
+
+*   **Pros:** Simple to set up.
+*   **Cons:** **No internal isolation.** The `frontend` container can directly reach the `db` and `redis` containers. If the frontend were compromised, the attacker would have network access to the data layer.
+
+**Diagram:**
+All services reside in the same "Default Network" zone.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    
+    box "Default Network (Shared)" #f5f5f5
+        participant Frontend
+        participant Backend
+        participant Redis
+        participant DB
+    end
+
+    User->>Frontend: Request Page
+    Frontend->>Backend: API Call
+    Backend->>Redis: Check Cache
+    
+    Note over Frontend, DB: ⚠️ Everyone is in the same network!
+    Note over Frontend, DB: Frontend can technically access DB/Redis directly.
+    
+    Backend-->>Frontend: JSON Response
+```
+
+#### 2. Enhanced Architecture (After: Network Segmentation)
+*Refer to `docker-compose.yml`*
+
+The updated configuration introduces **custom network segmentation** to improve security. We define two distinct networks to isolate the application tiers:
+
+*   **`frontend-network`**: Shared by `frontend` and `backend`.
+*   **`backend-network`**: Shared by `backend`, `db`, and `redis`.
+
+**Key Improvements:**
+*   The `frontend` is **only** on the `frontend-network`. It cannot reach `db` or `redis`.
+*   The `backend` is on **both** networks, acting as the secure bridge.
+
+##### Network Architecture Diagram
+
+The following diagram illustrates the flow in the secure design. Notice how the components are grouped into colored network zones.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    
+    box "Frontend Network (Public)" #e1f5fe
+        participant Frontend
+    end
+    
+    box "Bridge / Application Logic" #fff9c4
+        participant Backend
+    end
+    
+    Note right of Backend: ⚡ Backend is the ONLY link between networks
+    
+    box "Backend Network (Private Data)" #ffe0b2
+        participant Redis
+        participant DB
+    end
+
+    User->>Frontend: Request Page
+    Frontend->>Backend: API Call (GET /results)
+    
+    Note right of Backend: Backend acts as the bridge
+    Backend->>Redis: Check Cache
+    
+    alt Cache Miss
+        Redis-->>Backend: nil
+        Backend->>DB: Query Database
+        DB-->>Backend: Return Data
+        Backend->>Redis: Cache Data
+    else Cache Hit
+        Redis-->>Backend: Return Cached Data
+    end
+    
+    Backend-->>Frontend: Return JSON Response
+    Frontend-->>User: Render HTML
+```
 
 ### Docker Volumes for Data Persistence
 
