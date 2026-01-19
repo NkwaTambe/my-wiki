@@ -307,3 +307,22 @@ Every time you change code (which happens often), line 2's cache is invalidated.
 Without "Blocking", the worker would need to check the queue continuously (polling), e.g., `while True: pop()`. If the queue is empty, this loop spins 1000s of times per second, burning 100% CPU.
 With **Blocking**, the worker says "Wake me up when data arrives" and sleeps, using near 0% CPU while waiting.
 </details>
+
+---
+
+### Question 25: "Started" vs "Healthy"
+**Code**:
+```yaml
+depends_on:
+  db:
+    condition: service_healthy
+```
+**Question**: By default, `depends_on` only waits for `service_started`. What is the critical difference between `service_started` and `service_healthy`, and why does it matter for a Database?
+
+<details>
+<summary>Click for Answer</summary>
+**Process Running vs App Ready.**
+*   **Service Started**: Docker checks "Did the container process launch?". For a database, the process starts immediately, but it might take 10 seconds to load files and open the port.
+*   **Service Healthy**: Docker checks "Did the Healthcheck command (pg_isready) return success?". This confirms the Database is actually **accepting connections**.
+If you only wait for "Started", your app will try to connect to the DB before it's ready and crash. Waiting for "Healthy" ensures the dependency is fully operational.
+</details>
