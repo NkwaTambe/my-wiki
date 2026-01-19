@@ -293,6 +293,34 @@ Every time you change code (which happens often), line 2's cache is invalidated.
 
 ---
 
+### Question 27: Targeting the Wrong Stage
+**Scenario**: In `docker-compose.yml`, you change `target: runtime` to `target: builder` for the Worker service.
+**Question**: Does the app still work? What are the 3 negative consequences?
+
+<details>
+<summary>Click for Answer</summary>
+**It fails.**
+1.  **No CMD**: The `builder` stage in our Dockerfile doesn't have a `CMD ["python", "main.py"]` instruction. It defaults to the base image's CMD (python interactive shell), so the container will likely start and do nothing or exit.
+2.  **Tests Skipped**: The `tester` stage comes *after* `builder`. Docker stops early, so your unit tests never run.
+3.  **Image Bloat**: You ship the build tools and cached files, making the image larger than the optimized `runtime` image.
+</details>
+
+---
+
+### Question 28: Removing the Target Field
+**Scenario**: You simply delete the line `target: runtime` from `docker-compose.yml`.
+**Question**: Does the build fail? What does Docker do by default?
+
+<details>
+<summary>Click for Answer</summary>
+**It Works (Coincidentally).**
+If you don't specify a `target`, Docker builds the **entire Dockerfile** from top to bottom and uses the result of the **last stage**.
+Since our last stage happens to be `AS runtime`, you get the correct image.
+**Risk**: If someone edited the Dockerfile and put the `tester` stage at the bottom, your production app would suddenly be running tests instead of the app! Explicitly setting `target` is safer.
+</details>
+
+---
+
 ### Question 24: Redis Commands
 **Code**: `r.rpush(...)` and `r.blpop(...)`
 **Question**: What do the acronyms **RPUSH** and **BLPOP** actually stand for, and why is the "B" important for our Worker?
