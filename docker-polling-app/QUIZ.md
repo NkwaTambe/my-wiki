@@ -326,3 +326,18 @@ depends_on:
 *   **Service Healthy**: Docker checks "Did the Healthcheck command (pg_isready) return success?". This confirms the Database is actually **accepting connections**.
 If you only wait for "Started", your app will try to connect to the DB before it's ready and crash. Waiting for "Healthy" ensures the dependency is fully operational.
 </details>
+
+---
+
+### Question 26: How Docker Detects Changes (The "Touch" Effect)
+**Scenario**: You edit `app.py` (even just adding a space) and run `docker-compose up --build`.
+**Question**: How does Docker know that the file changed? Does it rebuild everything from scratch? Explain the mechanism.
+
+<details>
+<summary>Click for Answer</summary>
+**Checksums & Layer Caching.**
+1.  **Context**: Docker calculates a SHA256 checksum (hash) for every file in your build context.
+2.  **Comparison**: When it reaches `COPY . .`, it compares the current hash of your files against the hash stored in its cache from the last build.
+3.  **Invalidation**: If you "touched" `app.py`, the hash changes. Docker marks the cache as **invalid** for that step.
+4.  **Cascade**: It re-runs that `COPY` instruction **and every instruction after it** (like `RUN pip install` if it was below it). Steps *before* the change (like the base image or previous `COPY requirements.txt`) are still cached and skipped.
+</details>
