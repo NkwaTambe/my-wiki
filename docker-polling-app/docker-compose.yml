@@ -9,10 +9,8 @@ services:
     ports:
       - "8080:80"  # Map host port 8080 to container port 80
     depends_on:
-      vote:
-        condition: service_healthy
-      result:
-        condition: service_healthy
+      - vote
+      - result
     networks:
       - frontend-net
     restart: always
@@ -30,8 +28,7 @@ services:
       - frontend-net
       - backend-net
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
@@ -57,10 +54,8 @@ services:
       - db-net
       - backend-net
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - db
+      - redis
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
@@ -85,10 +80,8 @@ services:
       - backend-net
       - db-net
     depends_on:
-      redis:
-        condition: service_healthy
-      db:
-        condition: service_healthy
+      - redis
+      - db
     restart: always
 
   # ==========================================
