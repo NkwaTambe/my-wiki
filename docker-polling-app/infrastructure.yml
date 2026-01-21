@@ -1,0 +1,6 @@
+services:
+  redis:
+    image: redis:alpine
+
+  db:
+    image: postgres:13-alpine

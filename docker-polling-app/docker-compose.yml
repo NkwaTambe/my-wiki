@@ -22,8 +22,8 @@ services:
     build:
       context: ./vote-service
       target: runtime
-    environment:
-      - REDIS_HOST=redis
+    env_file:
+      - db_credentials.env
     networks:
       - frontend-net
       - backend-net
@@ -43,12 +43,8 @@ services:
     build:
       context: ./result-service
       target: runtime
-    environment:
-      - DB_HOST=db
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - REDIS_HOST=redis
+    env_file:
+      - db_credentials.env
     networks:
       - frontend-net
       - db-net
@@ -70,12 +66,8 @@ services:
     build:
       context: ./worker-service
       target: runtime
-    environment:
-      - REDIS_HOST=redis
-      - DB_HOST=db
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+    env_file:
+      - db_credentials.env
     networks:
       - backend-net
       - db-net
@@ -88,7 +80,9 @@ services:
   # REDIS: Message Queue
   # ==========================================
   redis:
-    image: redis:alpine
+    extends:
+      file: infrastructure.yml
+      service: redis
     networks:
       - backend-net
     healthcheck:
@@ -101,11 +95,11 @@ services:
   # DATABASE: Persistent Storage
   # ==========================================
   db:
-    image: postgres:13-alpine
-    environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+    extends:
+      file: infrastructure.yml
+      service: db
+    env_file:
+      - db_credentials.env
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
